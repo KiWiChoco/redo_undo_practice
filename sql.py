@@ -36,16 +36,16 @@ def redo(li):
     f = codecs.open("recovery.log", "r", "utf-8")
     lines = f.readlines()
     redo_lines = []
-    for idx,line in enumerate(lines):
+    for idx,line in enumerate(lines): #체크 포인트가있는 인덱스를 뽑아내기위해 enumerate해서 인덱스를 뽑고 그 이후의 라인들을 redo라인으로 설정해주자.
         if line.strip().startswith("checkpoint"):
             for new_line in lines[idx+1:]:
-                redo_lines.append(new_line.strip().replace(".",","))
+                redo_lines.append(new_line.strip().replace(".",",")) #redo라인을 만들면서 \t\n과같은 내용은 없애주고 .도 ,로 바꾸어서 나중에 split을 용이하게하자.
     #print(redo_lines)
     ex = re.compile("(\W+\w+\W+)\s([\w+\W]+)")
-    for redo_line in redo_lines:
+    for redo_line in redo_lines: #모든 redo라인을 순차적으로 돌리자.
         ex1 = ex.search(redo_line)
-        transaction = ex1.group(1)
-        sql_need = ex1.group(2).split(",")
+        transaction = ex1.group(1) #이건 하나하나redo라인의 transaction 번호
+        sql_need = ex1.group(2).split(",") #이건 그 redo라인에서 수행하야 하는 sql내용
         if (transaction in checkpoint) and len(sql_need) != 1 :
             if len(sql_need) == 5: #"""recovey log중 oldvalue를 가진경우 처리"""
                 primary_sql = "show fields from %s where `Key` = 'PRI'"%(sql_need[0])
@@ -64,11 +64,11 @@ def redo(li):
             else:
                 print("recovey log length is something wrong plz check")
 
-        elif (transaction in checkpoint) and len(sql_need) == 1:
+        elif (transaction in checkpoint) and len(sql_need) == 1: #commit이나 abort를 만나면 checkpoint리스트에서 삭제해주자
             if sql_need[0] == 'commit' or sql_need[0] == 'abort' :
                 checkpoint.remove(transaction)
             else : continue
-        elif (transaction not in checkpoint):
+        elif (transaction not in checkpoint): #start를 만나면 checkpoint리스트에 넣어주자
             if sql_need[0] == 'start':
                 checkpoint.append(transaction)
 
@@ -83,8 +83,8 @@ def undo(li):
     f = codecs.open("recovery.log", "r", "utf-8")
     lines_redo = f.readlines()
     undo_lines = []
-    for line in lines_redo[::-1]:
-        undo_lines.append(line.strip().replace(".",","))
+    for line in lines_redo[::-1]: #처음부터 끝까지의 recovery log를 뒤집어서 하나씩 뽑아내자.
+        undo_lines.append(line.strip().replace(".",",")) #\t\n과같은 내용은 없애주고 .도 ,로 바꾸어서 나중에 split을 용이하게하자.
     #print(undo_lines)
     ex = re.compile("(\W+\w+\W+)\s([\w+\W]+)")
     for undo_line in undo_lines:
